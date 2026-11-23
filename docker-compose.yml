@@ -12,6 +12,40 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U joineazy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: joineazy-backend
+    restart: unless-stopped
+    environment:
+      PORT: 5001
+      DATABASE_URL: postgresql://joineazy:joineazy_pass@db:5432/joineazy
+      JWT_SECRET: change_this_to_a_long_random_string_before_deploying
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:5173
+      ADMIN_SIGNUP_CODE: prof-secret-2026
+    ports:
+      - "5001:5001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5001/api
+    container_name: joineazy-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
